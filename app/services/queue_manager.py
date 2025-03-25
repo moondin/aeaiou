@@ -9,13 +9,20 @@ from app.core.config import settings
 
 # Initialize Redis client
 try:
-    redis_client = redis.Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        db=settings.REDIS_DB,
-        password=settings.REDIS_PASSWORD,
-        decode_responses=True
-    )
+    # Use REDIS_URL if available (Railway.app and other platforms provide this)
+    if settings.REDIS_URL:
+        redis_client = redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True
+        )
+    else:
+        redis_client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            db=settings.REDIS_DB,
+            password=settings.REDIS_PASSWORD,
+            decode_responses=True
+        )
     # Test connection
     redis_client.ping()
 except redis.RedisError as e:

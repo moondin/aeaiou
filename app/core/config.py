@@ -25,11 +25,12 @@ class Settings(BaseSettings):
     REPLICATE_API_TOKEN: str = os.getenv("REPLICATE_API_TOKEN", "")
     REPLICATE_MODEL_VERSION: str = "stability-ai/stable-diffusion:db21e94d2eda158a3bf169282768c2a61aabab93cbdd385669865480734c35ad"
     
-    # Redis for job queue
+    # Redis settings
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
+    REDIS_URL: Optional[str] = os.getenv("REDIS_URL")  # Added for Railway.app compatibility
     
     # Database settings
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./app.db")
