@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aeaiou API Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,.1);
+        }
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #0d6efd;
+        }
+        .stat-label {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+        .api-key {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        #statusMessage {
+            display: none;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="d-flex justify-content-between align-items-center mb-4">
+            <h1>aeaiou API Admin Panel</h1>
+            <span class="badge bg-success" id="apiStatus">Connecting...</span>
+        </header>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <div class="stat-value" id="totalImages">-</div>
+                    <div class="stat-label">Total Images Generated</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <div class="stat-value" id="activeJobs">-</div>
+                    <div class="stat-label">Active Jobs</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <div class="stat-value" id="apiUsers">-</div>
+                    <div class="stat-label">API Users</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        API Status
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group" id="serviceStatus">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                API Service
+                                <span class="badge bg-secondary" id="apiServiceStatus">Checking...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Redis
+                                <span class="badge bg-secondary" id="redisStatus">Checking...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Replicate API
+                                <span class="badge bg-secondary" id="replicateStatus">Checking...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Storage
+                                <span class="badge bg-secondary" id="storageStatus">Checking...</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        API Key Management
+                    </div>
+                    <div class="card-body">
+                        <div id="apiKeys">
+                            <p>Enter your admin credentials to view and manage API keys.</p>
+                            <div class="mb-3">
+                                <label for="adminUsername" class="form-label">Admin Username</label>
+                                <input type="text" class="form-control" id="adminUsername">
+                            </div>
+                            <div class="mb-3">
+                                <label for="adminPassword" class="form-label">Admin Password</label>
+                                <input type="password" class="form-control" id="adminPassword">
+                            </div>
+                            <button class="btn btn-primary" id="loginButton">Login</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        Recent Jobs
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Job ID</th>
+                                    <th>User</th>
+                                    <th>Created</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentJobs">
+                                <tr>
+                                    <td colspan="5" class="text-center">Login to view recent jobs</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info" id="statusMessage"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Base URL for API - Change this to your actual API URL
+        const API_BASE_URL = 'https://aeaiou.com/api/v1';
+        let adminToken = localStorage.getItem('adminToken');
+        
+        // Function to check API status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL.split('/api')[0]}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    document.getElementById('apiStatus').textContent = 'Online';
+                    document.getElementById('apiStatus').className = 'badge bg-success';
+                    document.getElementById('apiServiceStatus').textContent = 'Online';
+                    document.getElementById('apiServiceStatus').className = 'badge bg-success';
+                } else {
+                    document.getElementById('apiStatus').textContent = 'Degraded';
+                    document.getElementById('apiStatus').className = 'badge bg-warning';
+                    document.getElementById('apiServiceStatus').textContent = 'Degraded';
+                    document.getElementById('apiServiceStatus').className = 'badge bg-warning';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').textContent = 'Offline';
+                document.getElementById('apiStatus').className = 'badge bg-danger';
+                document.getElementById('apiServiceStatus').textContent = 'Offline';
+                document.getElementById('apiServiceStatus').className = 'badge bg-danger';
+            }
+        }
+
+        // Initialize the dashboard
+        function initDashboard() {
+            checkApiStatus();
+            
+            // Check if admin is logged in
+            if (adminToken) {
+                // Here you would make API calls to get actual stats
+                // For now we'll simulate with mock data
+                document.getElementById('totalImages').textContent = '128';
+                document.getElementById('activeJobs').textContent = '3';
+                document.getElementById('apiUsers').textContent = '15';
+                
+                // Update service statuses
+                document.getElementById('redisStatus').textContent = 'Online';
+                document.getElementById('redisStatus').className = 'badge bg-success';
+                document.getElementById('replicateStatus').textContent = 'Online';
+                document.getElementById('replicateStatus').className = 'badge bg-success';
+                document.getElementById('storageStatus').textContent = 'Online';
+                document.getElementById('storageStatus').className = 'badge bg-success';
+                
+                // Show mock recent jobs
+                document.getElementById('recentJobs').innerHTML = `
+                    <tr>
+                        <td>job_123456</td>
+                        <td>user_42</td>
+                        <td>2025-03-25 12:15</td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                        <td><button class="btn btn-sm btn-primary">View</button></td>
+                    </tr>
+                    <tr>
+                        <td>job_123455</td>
+                        <td>user_17</td>
+                        <td>2025-03-25 12:10</td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                        <td><button class="btn btn-sm btn-primary">View</button></td>
+                    </tr>
+                    <tr>
+                        <td>job_123454</td>
+                        <td>user_42</td>
+                        <td>2025-03-25 12:05</td>
+                        <td><span class="badge bg-warning">Processing</span></td>
+                        <td><button class="btn btn-sm btn-primary">View</button></td>
+                    </tr>
+                `;
+                
+                // Update API keys section
+                document.getElementById('apiKeys').innerHTML = `
+                    <h5>Current API Keys</h5>
+                    <div class="api-key">
+                        <div class="d-flex justify-content-between">
+                            <code>8f7d56a3e2c14b29b67a92f5e1d8c3a7</code>
+                            <span class="badge bg-primary">user_42</span>
+                        </div>
+                    </div>
+                    <div class="api-key">
+                        <div class="d-flex justify-content-between">
+                            <code>3a9c7b1e5d2f8g6h4j2k1l0p9o8i7u6y</code>
+                            <span class="badge bg-primary">user_17</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success" id="createApiKey">Create New API Key</button>
+                `;
+            }
+        }
+
+        // Handle login button click
+        document.getElementById('loginButton').addEventListener('click', function() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            
+            // In a real application, you would validate credentials against the backend
+            if (username === 'admin' && password === 'admin') {
+                // Simulating a successful login
+                adminToken = 'mock-admin-token-12345';
+                localStorage.setItem('adminToken', adminToken);
+                
+                // Show success message
+                const messageEl = document.getElementById('statusMessage');
+                messageEl.textContent = 'Login successful!';
+                messageEl.className = 'alert alert-success';
+                messageEl.style.display = 'block';
+                
+                // Update dashboard with data
+                initDashboard();
+                
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 3000);
+            } else {
+                // Show error message
+                const messageEl = document.getElementById('statusMessage');
+                messageEl.textContent = 'Invalid credentials. Try admin/admin for this demo.';
+                messageEl.className = 'alert alert-danger';
+                messageEl.style.display = 'block';
+                
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 3000);
+            }
+        });
+
+        // Initialize the dashboard when page loads
+        window.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
