@@ -1,0 +1,47 @@
+services:
+  # API Service
+  - type: web
+    name: aeaiou-api
+    env: docker
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: CORS_ORIGINS
+        value: '["https://aeaiou.com", "https://www.aeaiou.com"]'
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: REDIS_HOST
+        fromService:
+          name: aeaiou-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: aeaiou-redis
+          type: redis
+          property: port
+      - key: REPLICATE_API_TOKEN
+        sync: false
+      - key: STORAGE_TYPE
+        value: s3
+      - key: S3_BUCKET_NAME
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+
+  # Redis Service
+  - type: redis
+    name: aeaiou-redis
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    plan: free
