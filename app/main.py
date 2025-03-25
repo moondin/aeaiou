@@ -49,8 +49,3 @@ async def startup_event():
 async def root():
     """Root endpoint to check if API is running."""
     return {"message": "Welcome to aeaiou AI Image Generation API", "status": "operational"}
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for monitoring systems."""
-    return {"status": "healthy"}
