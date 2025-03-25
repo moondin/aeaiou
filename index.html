@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aeaiou - AI Image Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">aeaiou</div>
+        <p class="tagline">Creative AI Image Generation</p>
+    </header>
+    
+    <main>
+        <div class="container">
+            <div class="input-section">
+                <textarea id="promptInput" placeholder="Enter your prompt description here..."></textarea>
+                <button id="generateButton">Generate Image</button>
+            </div>
+            
+            <div id="imageContainer">
+                <div id="loadingIndicator" class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Generating your image...</p>
+                </div>
+                <div id="resultContainer">
+                    <img id="generatedImage" alt="Generated image will appear here">
+                    <a id="downloadLink" download="aeaiou-image.png">Download Image</a>
+                </div>
+                <div id="errorMessage"></div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2024 aeaiou - AI Image Generation</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>
