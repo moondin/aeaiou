@@ -132,6 +132,10 @@ isort .
 
 ## Deployment
 
+### Deployment Status
+
+This API is deployed automatically via GitHub Actions.
+
 The API can be deployed using Docker:
 
 ```bash

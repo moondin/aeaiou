@@ -26,27 +26,42 @@ jobs:
         continue-on-error: true
       
       - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       
       - name: Add host key
+        env:
+          SERVER_HOST: ${{ secrets.HOST }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan $SERVER_HOST >> ~/.ssh/known_hosts
       
       - name: Deploy to server
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_HOST: ${{ secrets.HOST }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: |
           # Create deployment directory
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "mkdir -p /var/www/aeaiou"
+          ssh $SSH_USER@$SERVER_HOST "mkdir -p /var/www/aeaiou"
           
           # Transfer files
-          rsync -avz --exclude '.git' --exclude 'venv' --exclude '__pycache__' ./ ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/var/www/aeaiou/
+          rsync -avz --exclude '.git' --exclude 'venv' --exclude '__pycache__' ./ $SSH_USER@$SERVER_HOST:/var/www/aeaiou/
           
           # Create .env file from secrets
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cat > /var/www/aeaiou/.env << 'EOL'
+          ssh $SSH_USER@$SERVER_HOST "cat > /var/www/aeaiou/.env << 'EOL'
           # API Configuration
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          SECRET_KEY=$SECRET_KEY
           API_V1_PREFIX=/api/v1
           CORS_ORIGINS=[\"https://aeaiou.com\", \"https://www.aeaiou.com\"]
           RATE_LIMIT_PER_MINUTE=60
@@ -56,28 +71,28 @@ jobs:
           REDIS_PORT=6379
           
           # Replicate API
-          REPLICATE_API_TOKEN=${{ secrets.REPLICATE_API_TOKEN }}
+          REPLICATE_API_TOKEN=$REPLICATE_API_TOKEN
           
           # Storage Configuration
-          STORAGE_TYPE=${{ secrets.STORAGE_TYPE }}
-          S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
-          S3_REGION=${{ secrets.S3_REGION }}
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          STORAGE_TYPE=$STORAGE_TYPE
+          S3_BUCKET_NAME=$S3_BUCKET_NAME
+          S3_REGION=$S3_REGION
+          AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+          AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
           EOL"
           
           # Create necessary directories
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "mkdir -p /var/www/aeaiou/storage /var/www/aeaiou/certbot/conf /var/www/aeaiou/certbot/www"
+          ssh $SSH_USER@$SERVER_HOST "mkdir -p /var/www/aeaiou/storage /var/www/aeaiou/certbot/conf /var/www/aeaiou/certbot/www"
           
           # Start or restart the services
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cd /var/www/aeaiou && docker-compose -f docker-compose.prod.yml down || true && docker-compose -f docker-compose.prod.yml up -d"
+          ssh $SSH_USER@$SERVER_HOST "cd /var/www/aeaiou && docker-compose -f docker-compose.prod.yml down || true && docker-compose -f docker-compose.prod.yml up -d"
           
           # Set up SSL if not already set up
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cd /var/www/aeaiou && \
+          ssh $SSH_USER@$SERVER_HOST "cd /var/www/aeaiou && \
             if [ ! -d '/var/www/aeaiou/certbot/conf/live/aeaiou.com' ]; then \
               docker-compose -f docker-compose.prod.yml run --rm certbot \
               certonly --webroot --webroot-path=/var/www/certbot \
-              --email ${{ secrets.ADMIN_EMAIL }} --agree-tos --no-eff-email \
+              --email $ADMIN_EMAIL --agree-tos --no-eff-email \
               -d aeaiou.com -d www.aeaiou.com; \
               docker-compose -f docker-compose.prod.yml restart nginx; \
             fi"
