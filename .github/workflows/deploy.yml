@@ -1,0 +1,83 @@
+name: Deploy aeaiou API
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: Run tests
+        run: |
+          pytest -xvs tests/
+        continue-on-error: true
+      
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to server
+        run: |
+          # Create deployment directory
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "mkdir -p /var/www/aeaiou"
+          
+          # Transfer files
+          rsync -avz --exclude '.git' --exclude 'venv' --exclude '__pycache__' ./ ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/var/www/aeaiou/
+          
+          # Create .env file from secrets
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cat > /var/www/aeaiou/.env << 'EOL'
+          # API Configuration
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          API_V1_PREFIX=/api/v1
+          CORS_ORIGINS=[\"https://aeaiou.com\", \"https://www.aeaiou.com\"]
+          RATE_LIMIT_PER_MINUTE=60
+          
+          # Redis Configuration
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          
+          # Replicate API
+          REPLICATE_API_TOKEN=${{ secrets.REPLICATE_API_TOKEN }}
+          
+          # Storage Configuration
+          STORAGE_TYPE=${{ secrets.STORAGE_TYPE }}
+          S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
+          S3_REGION=${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          EOL"
+          
+          # Create necessary directories
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "mkdir -p /var/www/aeaiou/storage /var/www/aeaiou/certbot/conf /var/www/aeaiou/certbot/www"
+          
+          # Start or restart the services
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cd /var/www/aeaiou && docker-compose -f docker-compose.prod.yml down || true && docker-compose -f docker-compose.prod.yml up -d"
+          
+          # Set up SSL if not already set up
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.HOST }} "cd /var/www/aeaiou && \
+            if [ ! -d '/var/www/aeaiou/certbot/conf/live/aeaiou.com' ]; then \
+              docker-compose -f docker-compose.prod.yml run --rm certbot \
+              certonly --webroot --webroot-path=/var/www/certbot \
+              --email ${{ secrets.ADMIN_EMAIL }} --agree-tos --no-eff-email \
+              -d aeaiou.com -d www.aeaiou.com; \
+              docker-compose -f docker-compose.prod.yml restart nginx; \
+            fi"
